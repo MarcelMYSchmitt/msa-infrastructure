@@ -8,7 +8,7 @@ For creating an aks we are going to use the azure cli. You can find the specific
 
 # Getting Started
 
-Running locally: 
+Running locally:   
 Login using Login-AzureRmAccount and execute `Create-Infrastructure.ps1` with parameter -FileName ms-we-dev-msa.
 
 Running in Azure Devops:
