@@ -1,0 +1,74 @@
+{
+    "$schema": "http://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+        "CompanyTag": {
+            "type": "string"
+          },
+          "EnvironmentTag": {
+            "type": "string"
+          },
+          "LocationTag": {
+            "type": "string"
+          },
+          "ProjectTag": {
+            "type": "string"
+        }
+    },
+    "variables": {
+      "keyVaultApiVersion": "2015-06-01",
+      "eventHubApiVersion": "2015-08-01",
+      "namespaceName": "[concat(parameters('CompanyTag'), '-', parameters('LocationTag'), '-', parameters('EnvironmentTag'), '-', parameters('ProjectTag'), '-eventhubns')]",
+      "eventHubName": "[concat(parameters('CompanyTag'), '-', parameters('LocationTag'), '-', parameters('EnvironmentTag'), '-', parameters('ProjectTag'), '-eventhub-ingr')]",
+      "keyVaultName": "[concat(parameters('CompanyTag'), '-', parameters('LocationTag'), '-', parameters('EnvironmentTag'), '-', parameters('ProjectTag'), '-vt')]",
+      "consumerCoordinationStorageName": "[concat(parameters('CompanyTag'), parameters('LocationTag'), parameters('EnvironmentTag'), parameters('ProjectTag'), 'st')]",
+      "eventHubSendConnectionStringKeyName": "eventHubSendConnectionString",
+      "eventHubListenConnectionStringKeyName": "eventHubListenConnectionString",
+      "sendRuleName": "sendRule",
+      "listenRuleName": "listenRule",
+      "storageSecretKeyName": "storageAccessKey"
+    },
+    "resources": [
+      {
+        "type": "Microsoft.KeyVault/vaults/secrets",
+        "apiVersion": "[variables('keyVaultApiVersion')]",
+        "name": "[concat(variables('keyVaultName'), '/', variables('storageSecretKeyName'))]",
+        "tags": {
+          "displayName": "Storage secret entry in key vault"
+        },
+        "properties": {
+          "value": "[listKeys(resourceId('Microsoft.Storage/storageAccounts', variables('consumerCoordinationStorageName')), providers('Microsoft.Storage', 'storageAccounts').apiVersions[0]).keys[0].value]"
+        },
+        "dependsOn": []
+      },
+      {
+        "type": "Microsoft.KeyVault/vaults/secrets",
+        "apiVersion": "[variables('keyVaultApiVersion')]",
+        "location": "[resourceGroup().location]",
+        "name": "[concat(variables('keyVaultName'), '/', variables('eventHubSendConnectionStringKeyName'))]",
+        "tags": {
+          "displayName": "Event hub send connection string secret entry in key vault",
+          "owner": "msa"
+        },
+        "properties": {
+          "value": "[listkeys(resourceId('Microsoft.EventHub/namespaces/eventhubs/authorizationRules', variables('namespaceName'), variables('eventHubName'), variables('sendRuleName')), variables('eventHubApiVersion')).primaryConnectionString]"
+        },
+        "dependsOn": []
+      },
+      {
+        "type": "Microsoft.KeyVault/vaults/secrets",
+        "apiVersion": "[variables('keyVaultApiVersion')]",
+        "location": "[resourceGroup().location]",
+        "name": "[concat(variables('keyVaultName'), '/', variables('eventHubListenConnectionStringKeyName'))]",
+        "tags": {
+          "displayName": "Event hub listen connection string secret entry in key vault",
+          "owner": "msa"
+        },
+        "properties": {
+          "value": "[listkeys(resourceId('Microsoft.EventHub/namespaces/eventhubs/authorizationRules', variables('namespaceName'), variables('eventHubName'), variables('listenRuleName')), variables('eventHubApiVersion')).primaryConnectionString]"
+        },
+        "dependsOn": []
+      }
+    ],
+    "outputs": {}
+  }

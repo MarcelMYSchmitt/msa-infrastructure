@@ -1,0 +1,137 @@
+{
+    "$schema": "http://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+      "CompanyTag": {
+        "type": "string"
+      },
+      "EnvironmentTag": {
+        "type": "string"
+      },
+      "LocationTag": {
+        "type": "string"
+      },
+      "ProjectTag": {
+        "type": "string"
+      },
+      "IsAutoInflateEnabled": {
+        "type": "string",
+        "defaultValue": "True",
+        "allowedValues": [
+          "True",
+          "False"
+        ],
+        "metadata": {
+          "description": "Enable or disable AutoInflate"
+        }
+      },
+      "MaximumThroughputUnits": {
+        "type": "int",
+        "defaultValue": 0,
+        "minValue": 0,
+        "maxValue": 20,
+        "metadata": {
+          "description": "Enable or disable AutoInflate"
+        }
+      }
+    },
+    "variables": {
+      "eventHubApiVersion": "2015-08-01",
+      "storageApiVersion": "2016-01-01",
+      "eventHubNamespaceName": "[concat(parameters('CompanyTag'), '-', parameters('LocationTag'), '-', parameters('EnvironmentTag'), '-', parameters('ProjectTag'), '-eventhubns')]",
+      "eventHubName": "[concat(parameters('CompanyTag'), '-', parameters('LocationTag'), '-', parameters('EnvironmentTag'), '-', parameters('ProjectTag'), '-eventhub-ingr')]",
+      "consumerCoordinationStorageName": "[concat(parameters('CompanyTag'), parameters('LocationTag'), parameters('EnvironmentTag'), parameters('ProjectTag'),'st')]",
+      "sendRuleName": "sendRule",
+      "listenRuleName": "listenRule"
+    },
+    "resources": [
+      {
+        "apiVersion": "[variables('eventHubApiVersion')]",
+        "name": "[variables('eventHubNamespaceName')]",
+        "type": "Microsoft.EventHub/Namespaces",
+        "tags": {
+          "displayName": "Event Hub namespace & hub",
+          "owner": "msa"
+        },
+        "location": "[resourceGroup().location]",
+        "sku": {
+          "name": "Standard",
+          "tier": "Standard",
+          "capacity": 1
+        },
+        "properties": {
+          "isAutoInflateEnabled": "[parameters('IsAutoInflateEnabled')]",
+          "maximumThroughputUnits": "[parameters('MaximumThroughputUnits')]"
+        },
+        "resources": [
+          {
+            "apiVersion": "[variables('eventHubApiVersion')]",
+            "name": "[variables('eventHubName')]",
+            "type": "EventHubs",
+            "dependsOn": [
+              "[concat('Microsoft.EventHub/namespaces/', variables('eventHubNamespaceName'))]"
+            ],
+            "properties": {
+              "path": "[variables('eventHubName')]",
+              "MessageRetentionInDays": "1",
+              "PartitionCount": 20
+            },
+            "resources": [
+              {
+                "apiVersion": "[variables('eventHubApiVersion')]",
+                "name": "consumer",
+                "type": "ConsumerGroups",
+                "dependsOn": [
+                  "[concat('Microsoft.EventHub/namespaces/', variables('eventHubNamespaceName'),'/EventHubs/',variables('eventHubName'))]"
+                ]
+              },
+              {
+                "type": "authorizationRules",
+                "name": "[variables('listenRuleName')]",
+                "apiVersion": "[variables('eventHubApiVersion')]",
+                "properties": {
+                  "rights": [
+                    "Listen"
+                  ]
+                },
+                "resources": [],
+                "dependsOn": [
+                  "[concat('Microsoft.EventHub/namespaces/', variables('eventHubNamespaceName'),'/EventHubs/',variables('eventHubName'))]"
+                ]
+              },
+              {
+                "type": "authorizationRules",
+                "name": "[variables('sendRuleName')]",
+                "apiVersion": "[variables('eventHubApiVersion')]",
+                "properties": {
+                  "rights": [
+                    "Send"
+                  ]
+                },
+                "resources": [],
+                "dependsOn": [
+                  "[concat('Microsoft.EventHub/namespaces/', variables('eventHubNamespaceName'),'/EventHubs/',variables('eventHubName'))]",
+                  "[concat('Microsoft.EventHub/namespaces/', variables('eventHubNamespaceName'),'/EventHubs/',variables('eventHubName'), '/authorizationRules/', variables('listenRuleName'))]"
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "type": "Microsoft.Storage/storageAccounts",
+        "name": "[variables('consumerCoordinationStorageName')]",
+        "tags": {
+          "displayName": "Consumer coordination storage"
+        },
+        "apiVersion": "[variables('storageApiVersion')]",
+        "location": "[resourceGroup().location]",
+        "sku": {
+          "name": "Standard_LRS"
+        },
+        "kind": "Storage",
+        "properties": {}
+      }
+    ],
+    "outputs": {}
+  }

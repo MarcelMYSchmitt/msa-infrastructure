@@ -1,0 +1,9 @@
+{
+    "CompanyTag":"ms",
+    "EnvironmentTag":"dev",
+    "LocationTag":"we",
+    "ProjectTag":"msa",
+    "IsAutoInflateEnabled":"True",
+    "MaximumThroughputUnits": 20,
+    "SubscriptionId":"your_subscription_id"
+}
